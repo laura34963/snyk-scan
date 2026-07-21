@@ -1,0 +1,13 @@
+Snyk CLI version 1.1306.1,,,,,
+2026/07/21,Issue,No Fix Reason,member_center,store_center,cr_system
+activestorage,"https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-33195
+Fixed in activestorage@7.2.3.1, 8.0.4.1, 8.1.2.1
+https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-33174
+Fixed in activestorage@7.2.3.1, 8.0.4.1, 8.1.2.1",,"activestorage@7.1.6
+Remediation Upgrade to activestorage@7.2.3.1, 8.0.4.1, 8.1.2.1","activestorage@7.1.6
+Remediation Upgrade to activestorage@7.2.3.1, 8.0.4.1, 8.1.2.1",
+angular,"https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2024-21490
+Fixed in angular@Not fixed",,,angular@1.8.3,
+nokogiri,"https://github.com/advisories/GHSA-v2fc-qm4h-8hqv
+Fixed in nokogiri@1.19.3",,"nokogiri@1.19.0-arm64-darwin
+Remediation Upgrade to nokogiri@1.19.3",,

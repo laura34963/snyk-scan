@@ -1,0 +1,15 @@
+{
+  "ok": false,
+  "packageManager": "rubygems",
+  "vulnerabilities": [
+    {"packageName":"activestorage","version":"7.1.6","severity":"high",
+     "identifiers":{"CVE":["CVE-2026-33195"]},"fixedIn":["7.2.3.1","8.0.4.1","8.1.2.1"],
+     "url":"https://security.snyk.io/vuln/SNYK-RUBY-ACTIVESTORAGE-1"},
+    {"packageName":"activestorage","version":"7.1.6","severity":"high",
+     "identifiers":{"CVE":["CVE-2026-33174"]},"fixedIn":["7.2.3.1","8.0.4.1","8.1.2.1"],
+     "url":"https://security.snyk.io/vuln/SNYK-RUBY-ACTIVESTORAGE-2"},
+    {"packageName":"nokogiri","version":"1.19.0-arm64-darwin","severity":"high",
+     "identifiers":{"GHSA":["GHSA-v2fc-qm4h-8hqv"]},"fixedIn":["1.19.3"],
+     "url":"https://security.snyk.io/vuln/SNYK-RUBY-NOKOGIRI-1"}
+  ]
+}

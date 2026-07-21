@@ -1,0 +1,12 @@
+{
+  "ok": false,
+  "packageManager": "npm",
+  "vulnerabilities": [
+    {"packageName":"angular","version":"1.8.3","severity":"high",
+     "identifiers":{"CVE":["CVE-2024-21490"]},"fixedIn":[],
+     "url":"https://security.snyk.io/vuln/SNYK-JS-ANGULAR-1"},
+    {"packageName":"activestorage","version":"7.1.6","severity":"high",
+     "identifiers":{"CVE":["CVE-2026-33195"]},"fixedIn":["7.2.3.1","8.0.4.1","8.1.2.1"],
+     "url":"https://security.snyk.io/vuln/SNYK-RUBY-ACTIVESTORAGE-1"}
+  ]
+}
