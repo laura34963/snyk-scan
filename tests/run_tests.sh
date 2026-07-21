@@ -30,6 +30,28 @@ test_build_csv_jq() {
 
 test_build_csv_jq
 
+test_build_report() {
+  # shellcheck disable=SC1090
+  ( set +u
+    source "$ROOT/snyk-scan-to-csv.sh"
+    SCRIPT_DIR="$ROOT"
+    OUTDIR="$(mktemp -d)"
+    DATE="20260721"; DATE_SLASH="2026/07/21"; SNYK_VERSION="1.1306.1"
+    SERVICE_NAMES=(member_center store_center cr_system)   # cr_system has no json file
+    cp "$FIX/member_center.json" "$OUTDIR/member_center.json"
+    cp "$FIX/store_center.json"  "$OUTDIR/store_center.json"
+    csv="$(build_report)"
+    diff_out="$(diff "$FIX/expected-report.csv" "$csv" || true)"
+    rm -rf "$OUTDIR"
+    [ -z "$diff_out" ] && echo "BR_OK" || { echo "BR_DIFF"; echo "$diff_out"; }
+  ) > /tmp/br_result.$$ 2>/dev/null
+  assert_eq "build_report produces expected CSV (incl. empty column)" \
+    "BR_OK" "$(head -1 /tmp/br_result.$$)"
+  rm -f /tmp/br_result.$$
+}
+
+test_build_report
+
 echo "----"
 echo "PASS=$PASS FAIL=$FAIL"
 [ "$FAIL" -eq 0 ]
