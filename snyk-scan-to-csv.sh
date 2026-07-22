@@ -175,6 +175,54 @@ check_auth() {
 
 ensure_tools() { ensure_jq; ensure_snyk; check_auth; }
 
+build_snyk_args() {
+  SNYK_ARGS=(test)
+  [ "$SEVERITY" != "all" ] && SNYK_ARGS+=("--severity-threshold=$SEVERITY")
+  SNYK_ARGS+=(--all-projects)
+  if [ "${#EXCLUDES[@]}" -gt 0 ]; then
+    local IFS=,; SNYK_ARGS+=("--exclude=${EXCLUDES[*]}")
+  fi
+  SNYK_ARGS+=(--json)
+}
+
+# Scan one service. Atomic write: results land in a .tmp and are renamed to
+# <name>.json only when usable, so an interrupted run never leaves a truncated
+# file that a rerun would wrongly skip.
+scan_service() { # $1 name  $2 path
+  local name="$1" path="$2"
+  local target="$OUTDIR/$name.json" tmp="$OUTDIR/.$name.json.tmp" rc
+  if [ -f "$target" ] && [ "$FORCE" != "1" ]; then _log "skip $name (cached)"; return 0; fi
+  if [ ! -d "$path" ]; then _log "FAIL $name: path not found: $path"; return 1; fi
+  # Snapshot whether -e was active on entry so we restore it precisely rather
+  # than force it on: run_scans/main() run under set -e, but scan_service is
+  # also called standalone (e.g. from tests) where -e is off, and a blind
+  # `set -e` here would leak that state into the caller for the rest of the
+  # shell, aborting on the next non-zero return.
+  local had_e=0; case "$-" in *e*) had_e=1 ;; esac
+  set +e
+  ( cd "$path" && snyk "${SNYK_ARGS[@]}" ) > "$tmp" 2>>"$OUTDIR/scan.log"
+  rc=$?
+  [ "$had_e" -eq 1 ] && set -e
+  # Usable = exit 0 (no vulns) or 1 (vulns found), valid JSON, and not an error object.
+  if { [ "$rc" -eq 0 ] || [ "$rc" -eq 1 ]; } \
+     && jq -e 'if type=="object" and has("error") then false else true end' "$tmp" >/dev/null 2>&1; then
+    mv "$tmp" "$target"; _log "ok $name (snyk rc=$rc)"; return 0
+  fi
+  rm -f "$tmp"; _log "FAIL $name (snyk rc=$rc; see $OUTDIR/scan.log)"; return 1
+}
+
+run_scans() {
+  build_snyk_args
+  local i fails=0
+  if [ "${#SERVICE_NAMES[@]}" -gt 0 ]; then
+    for i in $(seq 0 $(( ${#SERVICE_NAMES[@]} - 1 )) ); do
+      scan_service "${SERVICE_NAMES[$i]}" "${SERVICE_PATHS[$i]}" || fails=$((fails+1))
+    done
+  fi
+  [ "$fails" -gt 0 ] && _log "$fails service(s) failed to scan; their columns will be empty."
+  return 0
+}
+
 # Build <OUTDIR>/snyk-report-<DATE>.csv from the per-service JSON files.
 # Missing <service>.json -> report:null -> empty column (still a column).
 build_report() {

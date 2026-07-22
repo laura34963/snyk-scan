@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# Mock Snyk for tests. Behavior driven by env:
+#   MOCK_FIXTURES : dir of <service>.json fixtures (matched by $PWD basename)
+#   MOCK_FAIL     : service name that should error (exit 2)
+case "$1" in
+  --version) echo "9.9.9-mock"; exit 0 ;;
+  auth|whoami) exit 0 ;;
+  config) echo "mock-api-key"; exit 0 ;;
+esac
+# `test ...`
+name="$(basename "$PWD")"
+if [ "${MOCK_FAIL:-}" = "$name" ]; then
+  printf '{"ok":false,"error":"mock failure","path":"%s"}\n' "$PWD"; exit 2
+fi
+if [ -f "$MOCK_FIXTURES/$name.json" ]; then
+  cat "$MOCK_FIXTURES/$name.json"; exit 1   # exit 1 = vulns found (success for us)
+fi
+printf '{"ok":false,"error":"no supported manifests"}\n'; exit 3

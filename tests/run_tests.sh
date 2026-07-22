@@ -127,6 +127,58 @@ test_ensure_snyk_present() {
 test_install_snyk_no_pkgmgr
 test_ensure_snyk_present
 
+test_build_snyk_args() {
+  ( set +u
+    source "$ROOT/snyk-scan-to-csv.sh"
+    SEVERITY="high"; EXCLUDES=(".ruby-lsp"); build_snyk_args
+    echo "${SNYK_ARGS[*]}"
+  ) > /tmp/ba.$$ 2>/dev/null
+  assert_eq "snyk args match required command form" \
+    "test --severity-threshold=high --all-projects --exclude=.ruby-lsp --json" "$(cat /tmp/ba.$$)"
+  rm -f /tmp/ba.$$
+  ( set +u
+    source "$ROOT/snyk-scan-to-csv.sh"
+    SEVERITY="all"; EXCLUDES=(); build_snyk_args
+    echo "${SNYK_ARGS[*]}"
+  ) > /tmp/ba2.$$ 2>/dev/null
+  assert_eq "severity=all omits threshold; empty excludes omit --exclude" \
+    "test --all-projects --json" "$(cat /tmp/ba2.$$)"
+  rm -f /tmp/ba2.$$
+}
+
+test_scan_resume_and_failure() {
+  ( set +u
+    source "$ROOT/snyk-scan-to-csv.sh"
+    work="$(mktemp -d)"; OUTDIR="$work/out"; mkdir -p "$OUTDIR"
+    export MOCK_FIXTURES="$FIX"
+    PATH="$HERE/mocks:$PATH"
+    mkdir -p "$work/member_center" "$work/store_center"
+    SEVERITY="high"; EXCLUDES=(".ruby-lsp"); FORCE=0; build_snyk_args
+
+    scan_service member_center "$work/member_center"; r1=$?      # fresh scan -> writes json
+    first="$(cat "$OUTDIR/member_center.json")"
+    # tamper the saved file; a resume must NOT overwrite it
+    echo '{"vulnerabilities":[],"_sentinel":true}' > "$OUTDIR/member_center.json"
+    scan_service member_center "$work/member_center"; r2=$?      # cached -> skip
+    kept="$(jq -r '._sentinel // "gone"' "$OUTDIR/member_center.json")"
+    # forced rescan overwrites
+    FORCE=1; scan_service member_center "$work/member_center"; r3=$?
+    reset="$(jq -r '._sentinel // "gone"' "$OUTDIR/member_center.json")"
+    # failing service leaves no json and returns 1
+    FORCE=0; MOCK_FAIL=store_center scan_service store_center "$work/store_center"; r4=$?
+    exists_fail="$([ -f "$OUTDIR/store_center.json" ] && echo yes || echo no)"
+
+    echo "r1=$r1 r2=$r2 kept=$kept r3=$r3 reset=$reset r4=$r4 failfile=$exists_fail"
+    rm -rf "$work"
+  ) > /tmp/sc.$$ 2>/dev/null
+  assert_eq "scan: fresh ok, resume skips, --force rescans, failure leaves no file" \
+    "r1=0 r2=0 kept=true r3=0 reset=gone r4=1 failfile=no" "$(cat /tmp/sc.$$)"
+  rm -f /tmp/sc.$$
+}
+
+test_build_snyk_args
+test_scan_resume_and_failure
+
 echo "----"
 echo "PASS=$PASS FAIL=$FAIL"
 [ "$FAIL" -eq 0 ]
