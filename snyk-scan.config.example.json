@@ -1,0 +1,10 @@
+{
+  "services": {
+    "member_center": "/absolute/path/to/member_center",
+    "store_center":  "/absolute/path/to/store_center"
+  },
+  "discover_root": "/absolute/path/to/parent-of-repos",
+  "severity": "high",
+  "exclude": [".ruby-lsp"],
+  "dest": "./out"
+}

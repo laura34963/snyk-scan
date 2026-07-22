@@ -179,6 +179,38 @@ test_scan_resume_and_failure() {
 test_build_snyk_args
 test_scan_resume_and_failure
 
+test_end_to_end() {
+  ( set +u
+    export MOCK_FIXTURES="$FIX"
+    PATH="$HERE/mocks:$PATH"
+    export SNYK_SCAN_DATE="20260721"
+    work="$(mktemp -d)"
+    mkdir -p "$work/member_center" "$work/store_center"
+    dest="$work/out"
+    bash "$ROOT/snyk-scan-to-csv.sh" --dest "$dest" \
+      --service member_center="$work/member_center" \
+      --service store_center="$work/store_center" >/dev/null 2>&1
+    # date-nested layout
+    layout="$([ -f "$dest/20260721/member_center.json" ] && [ -f "$dest/20260721/snyk-report-20260721.csv" ] && echo ok || echo bad)"
+    # csv has the two service columns + version row
+    hdr="$(sed -n '2p' "$dest/20260721/snyk-report-20260721.csv")"
+    # convert-only rebuilds without scanning (remove a json first; column must go empty but run must succeed)
+    rm -f "$dest/20260721/store_center.json"
+    bash "$ROOT/snyk-scan-to-csv.sh" --dest "$dest" --convert-only \
+      --service member_center="$work/member_center" \
+      --service store_center="$work/store_center" >/dev/null 2>&1
+    co_rc=$?
+    echo "layout=$layout hdr=[$hdr] co_rc=$co_rc"
+    rm -rf "$work"
+  ) > /tmp/e2e.$$ 2>/dev/null
+  assert_eq "end-to-end: date-nested output, correct header, convert-only succeeds" \
+    "layout=ok hdr=[2026/07/21,Issue,No Fix Reason,member_center,store_center] co_rc=0" \
+    "$(cat /tmp/e2e.$$)"
+  rm -f /tmp/e2e.$$
+}
+
+test_end_to_end
+
 echo "----"
 echo "PASS=$PASS FAIL=$FAIL"
 [ "$FAIL" -eq 0 ]

@@ -246,3 +246,34 @@ build_report() {
   _log "CSV written: $csv"
   echo "$csv"
 }
+
+main() {
+  set -euo pipefail
+  parse_args "$@"
+  load_config
+  resolve_config
+
+  DATE="${SNYK_SCAN_DATE:-$(date +%Y%m%d)}"
+  DATE_SLASH="${DATE:0:4}/${DATE:4:2}/${DATE:6:2}"
+  OUTDIR="$DEST/$DATE"
+  mkdir -p "$OUTDIR"
+
+  if [ "$CONVERT_ONLY" = "1" ]; then
+    ensure_jq
+    SNYK_VERSION="$(snyk --version 2>/dev/null | head -1 | tr -d '[:space:]')"
+    [ -n "$SNYK_VERSION" ] || SNYK_VERSION="unknown"
+  else
+    ensure_tools
+    SNYK_VERSION="$(snyk --version 2>/dev/null | head -1 | tr -d '[:space:]')"
+    [ -n "$SNYK_VERSION" ] || SNYK_VERSION="unknown"
+    run_scans
+  fi
+
+  build_report >/dev/null
+  _log "Done. Output dir: $OUTDIR"
+}
+
+# Run main only when executed, not when sourced (so tests can source this file).
+if [ "${BASH_SOURCE[0]}" = "${0}" ]; then
+  main "$@"
+fi
