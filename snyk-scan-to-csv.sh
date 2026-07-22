@@ -151,6 +151,30 @@ resolve_config() {
   resolve_services
 }
 
+ensure_jq() {
+  command -v jq >/dev/null 2>&1 || _die "jq is required but not installed. Install it: brew install jq"
+}
+
+install_snyk() {
+  if command -v brew >/dev/null 2>&1; then
+    _log "snyk not found; installing via Homebrew..."; brew install snyk
+  elif command -v npm >/dev/null 2>&1; then
+    _log "snyk not found; installing via npm..."; npm install -g snyk
+  else
+    _die "snyk not found and neither 'brew' nor 'npm' available. Install manually: https://docs.snyk.io/snyk-cli/install-the-snyk-cli"
+  fi
+  command -v snyk >/dev/null 2>&1 || _die "snyk installation appears to have failed."
+}
+
+ensure_snyk() { command -v snyk >/dev/null 2>&1 || install_snyk; }
+
+check_auth() {
+  [ -n "$(snyk config get api 2>/dev/null)" ] || snyk whoami >/dev/null 2>&1 \
+    || _die "Snyk is not authenticated. Run: snyk auth"
+}
+
+ensure_tools() { ensure_jq; ensure_snyk; check_auth; }
+
 # Build <OUTDIR>/snyk-report-<DATE>.csv from the per-service JSON files.
 # Missing <service>.json -> report:null -> empty column (still a column).
 build_report() {

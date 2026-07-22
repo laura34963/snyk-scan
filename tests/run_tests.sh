@@ -98,6 +98,35 @@ test_resolve_defaults
 test_resolve_config_and_override
 test_discover
 
+test_install_snyk_no_pkgmgr() {
+  local err rc
+  err="$(
+    ( set +u
+      source "$ROOT/snyk-scan-to-csv.sh"
+      empty="$(mktemp -d)"          # PATH with neither brew nor npm nor snyk
+      PATH="$empty" install_snyk
+    ) 2>&1
+  )"; rc=$?
+  assert_rc "install_snyk fails when brew and npm are both absent" 1 "$rc"
+  case "$err" in
+    *"neither 'brew' nor 'npm'"*) PASS=$((PASS+1)); echo "ok   - install_snyk emits manual-install guidance" ;;
+    *) FAIL=$((FAIL+1)); echo "FAIL - install_snyk guidance message"; echo "  got: $err" ;;
+  esac
+}
+
+test_ensure_snyk_present() {
+  local rc
+  ( set +u
+    source "$ROOT/snyk-scan-to-csv.sh"
+    bin="$(mktemp -d)"; printf '#!/bin/sh\nexit 0\n' > "$bin/snyk"; chmod +x "$bin/snyk"
+    PATH="$bin:$PATH" ensure_snyk
+  ) >/dev/null 2>&1; rc=$?
+  assert_rc "ensure_snyk is a no-op when snyk is already on PATH" 0 "$rc"
+}
+
+test_install_snyk_no_pkgmgr
+test_ensure_snyk_present
+
 echo "----"
 echo "PASS=$PASS FAIL=$FAIL"
 [ "$FAIL" -eq 0 ]
