@@ -231,6 +231,21 @@ test_convert_only_without_snyk() {
 }
 test_convert_only_without_snyk
 
+test_arg_validation() {
+  # missing value for a value-taking flag -> friendly _die, not a raw unbound-var abort
+  ( set -euo pipefail; source "$ROOT/snyk-scan-to-csv.sh"; parse_args --dest ) >/dev/null 2>&1
+  assert_rc "flag with no value fails cleanly (rc 1)" 1 "$?"
+  # --service without '=' is rejected
+  ( set -euo pipefail; source "$ROOT/snyk-scan-to-csv.sh"; parse_args --service foo ) >/dev/null 2>&1
+  assert_rc "--service without '=' rejected" 1 "$?"
+  # a service name containing '/' is rejected at resolve time
+  ( set +u; source "$ROOT/snyk-scan-to-csv.sh"
+    parse_args --service '../evil=/x'; load_config; resolve_config ) >/dev/null 2>&1
+  assert_rc "service name with '/' rejected" 1 "$?"
+}
+
+test_arg_validation
+
 echo "----"
 echo "PASS=$PASS FAIL=$FAIL"
 [ "$FAIL" -eq 0 ]

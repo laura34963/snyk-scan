@@ -36,14 +36,24 @@ EOF
 }
 
 parse_args() {
+  local val
   while [ "$#" -gt 0 ]; do
     case "$1" in
-      --config)   CONFIG_FILE="$2"; shift 2 ;;
-      --service)  CLI_SERVICE_NAMES+=("${2%%=*}"); CLI_SERVICE_PATHS+=("${2#*=}"); shift 2 ;;
-      --discover) CLI_DISCOVER="$2"; shift 2 ;;
-      --severity) CLI_SEVERITY="$2"; shift 2 ;;
-      --exclude)  CLI_EXCLUDES+=("$2"); CLI_EXCLUDE_SET=1; shift 2 ;;
-      --dest)     CLI_DEST="$2"; shift 2 ;;
+      --config|--service|--discover|--severity|--exclude|--dest)
+        # value-taking flags: require a value (avoids a raw "$2: unbound" under set -u)
+        [ "$#" -ge 2 ] || _die "$1 requires a value"
+        val="$2"
+        case "$1" in
+          --config)   CONFIG_FILE="$val" ;;
+          --service)
+            case "$val" in *=*) ;; *) _die "--service must be name=path (got: '$val')" ;; esac
+            CLI_SERVICE_NAMES+=("${val%%=*}"); CLI_SERVICE_PATHS+=("${val#*=}") ;;
+          --discover) CLI_DISCOVER="$val" ;;
+          --severity) CLI_SEVERITY="$val" ;;
+          --exclude)  CLI_EXCLUDES+=("$val"); CLI_EXCLUDE_SET=1 ;;
+          --dest)     CLI_DEST="$val" ;;
+        esac
+        shift 2 ;;
       --force)    CLI_FORCE=1; shift ;;
       --convert-only) CLI_CONVERT_ONLY=1; shift ;;
       -h|--help)  usage; exit 0 ;;
@@ -129,6 +139,15 @@ resolve_services() {
       name="${line%%=*}"; path="${line#*=}"
       service_exists "$name" || upsert_service "$name" "$path"
     done < <(discover_services "$DISCOVER_ROOT")
+  fi
+  # service names become filesystem path components (<OUTDIR>/<name>.json) and CSV
+  # column headers, so reject anything that could escape the output dir.
+  if [ "${#SERVICE_NAMES[@]}" -gt 0 ]; then
+    for i in $(seq 0 $(( ${#SERVICE_NAMES[@]} - 1 )) ); do
+      case "${SERVICE_NAMES[$i]}" in
+        ""|.|..|*/*) _die "Invalid service name: '${SERVICE_NAMES[$i]}' (must not be empty, '.', '..', or contain '/')" ;;
+      esac
+    done
   fi
   [ "${#SERVICE_NAMES[@]}" -gt 0 ] || \
     _die "No services to scan. Provide --service, a config 'services' map, or --discover."
