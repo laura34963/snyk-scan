@@ -211,6 +211,26 @@ test_end_to_end() {
 
 test_end_to_end
 
+test_convert_only_without_snyk() {
+  ( set +u
+    export SNYK_SCAN_DATE="20260721"
+    work="$(mktemp -d)"; dest="$work/out"; mkdir -p "$dest/20260721"
+    cp "$FIX/member_center.json" "$dest/20260721/member_center.json"
+    # snyk deliberately absent: restrict PATH to core dirs (jq must remain reachable)
+    jqdir="$(dirname "$(command -v jq)")"
+    PATH="$jqdir:/usr/bin:/bin" bash "$ROOT/snyk-scan-to-csv.sh" --dest "$dest" --convert-only \
+      --service member_center=/nonexistent >/dev/null 2>&1
+    rc=$?
+    csv="$dest/20260721/snyk-report-20260721.csv"
+    row1="$(head -1 "$csv" 2>/dev/null)"
+    [ "$rc" = "0" ] && [ -f "$csv" ] && case "$row1" in "Snyk CLI version unknown"*) echo "CO_OK";; *) echo "CO_BAD:$row1";; esac
+    rm -rf "$work"
+  ) > /tmp/co.$$ 2>/dev/null
+  assert_eq "convert-only succeeds and reports version=unknown when snyk absent" "CO_OK" "$(cat /tmp/co.$$)"
+  rm -f /tmp/co.$$
+}
+test_convert_only_without_snyk
+
 echo "----"
 echo "PASS=$PASS FAIL=$FAIL"
 [ "$FAIL" -eq 0 ]

@@ -260,14 +260,17 @@ main() {
 
   if [ "$CONVERT_ONLY" = "1" ]; then
     ensure_jq
-    SNYK_VERSION="$(snyk --version 2>/dev/null | head -1 | tr -d '[:space:]')"
-    [ -n "$SNYK_VERSION" ] || SNYK_VERSION="unknown"
   else
     ensure_tools
-    SNYK_VERSION="$(snyk --version 2>/dev/null | head -1 | tr -d '[:space:]')"
-    [ -n "$SNYK_VERSION" ] || SNYK_VERSION="unknown"
     run_scans
   fi
+
+  if command -v snyk >/dev/null 2>&1; then
+    SNYK_VERSION="$(snyk --version 2>/dev/null | head -1 | tr -d '[:space:]' || true)"
+  else
+    SNYK_VERSION=""
+  fi
+  [ -n "$SNYK_VERSION" ] || SNYK_VERSION="unknown"
 
   build_report >/dev/null
   _log "Done. Output dir: $OUTDIR"
