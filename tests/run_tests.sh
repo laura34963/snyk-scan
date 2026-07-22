@@ -52,6 +52,52 @@ test_build_report() {
 
 test_build_report
 
+test_resolve_defaults() {
+  ( set +u
+    source "$ROOT/snyk-scan-to-csv.sh"
+    parse_args --service api=/repos/api
+    load_config; resolve_config
+    echo "SEV=$SEVERITY DEST=$DEST EXC=${EXCLUDES[*]} N=${#SERVICE_NAMES[@]} S0=${SERVICE_NAMES[0]} P0=${SERVICE_PATHS[0]}"
+  ) > /tmp/rd.$$ 2>/dev/null
+  assert_eq "defaults: high sev, ./out dest, .ruby-lsp exclude, one CLI service" \
+    "SEV=high DEST=./out EXC=.ruby-lsp N=1 S0=api P0=/repos/api" "$(cat /tmp/rd.$$)"
+  rm -f /tmp/rd.$$
+}
+
+test_resolve_config_and_override() {
+  ( set +u
+    source "$ROOT/snyk-scan-to-csv.sh"
+    # config sets severity=medium, dest=./cfg-out, two services; CLI overrides severity + adds/overrides service
+    parse_args --config "$FIX/config.json" --severity high --service store_center=/override/store
+    load_config; resolve_config
+    echo "SEV=$SEVERITY DEST=$DEST N=${#SERVICE_NAMES[@]} NAMES=${SERVICE_NAMES[*]} STORE=${SERVICE_PATHS[1]} EXC=${EXCLUDES[*]}"
+  ) > /tmp/rc.$$ 2>/dev/null
+  assert_eq "config loaded; CLI overrides severity and store_center path" \
+    "SEV=high DEST=./cfg-out N=2 NAMES=member_center store_center STORE=/override/store EXC=.ruby-lsp vendor" \
+    "$(cat /tmp/rc.$$)"
+  rm -f /tmp/rc.$$
+}
+
+test_discover() {
+  ( set +u
+    source "$ROOT/snyk-scan-to-csv.sh"
+    root="$(mktemp -d)"
+    mkdir -p "$root/svc_a" "$root/svc_b" "$root/not_a_repo"
+    : > "$root/svc_a/Gemfile"; : > "$root/svc_b/package.json"
+    parse_args --discover "$root"
+    load_config; resolve_config
+    echo "N=${#SERVICE_NAMES[@]} NAMES=${SERVICE_NAMES[*]}"
+    rm -rf "$root"
+  ) > /tmp/dd.$$ 2>/dev/null
+  assert_eq "discover adds only subdirs with a manifest, sorted" \
+    "N=2 NAMES=svc_a svc_b" "$(cat /tmp/dd.$$)"
+  rm -f /tmp/dd.$$
+}
+
+test_resolve_defaults
+test_resolve_config_and_override
+test_discover
+
 echo "----"
 echo "PASS=$PASS FAIL=$FAIL"
 [ "$FAIL" -eq 0 ]

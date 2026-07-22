@@ -1,0 +1,6 @@
+{
+  "services": { "member_center": "/repos/member_center", "store_center": "/repos/store_center" },
+  "severity": "medium",
+  "exclude": [".ruby-lsp", "vendor"],
+  "dest": "./cfg-out"
+}
